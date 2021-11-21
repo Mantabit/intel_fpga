@@ -24,8 +24,9 @@ end entity;
 
 architecture seven_seg_decoder_arch of seven_seg_decoder is
 
-	signal count : integer range 0 to 5000000 := 0;
+	signal count : unsigned (27 downto 0) := (others => '0');
 	signal count_bcd : std_logic_vector(11 downto 0) := (others=>'0');
+	constant count_limit : unsigned(27 downto 0) := (others => '1');
 	-- function to convert to BCD format
 	-- input : 8 bit integer
 	-- output : 12 bit BCD number
@@ -53,30 +54,29 @@ architecture seven_seg_decoder_arch of seven_seg_decoder is
 	end to_bcd;
 
 begin
-
+	-- incrementation process
 	counter : process(CLOCK_50_B7A)
 	begin
 		if(CLOCK_50_B7A'event and CLOCK_50_B7A='1') then
-			if(count=(5000000-1)) then
-				count<=0;
+			if(count=count_limit) then
+				count<=(others=>'0');
 			else
 				count<=count+1;
 			end if;
 		end if;
 	end process;
-	
+	-- bcd conversion process
 	compute_bcd : process(count)
 	begin
-		
-		count_bcd <= to_bcd(unsigned(std_logic_vector(to_unsigned(count,23))(22 downto 15)));
+		count_bcd <= to_bcd(count(27 downto 20));
 	end process;
-	
+	-- hex output settings process
 	drive_hexs : process(count_bcd)
 	begin
 		case count_bcd(11 downto 8) is
-			 when "0000" => HEX2 <= "0000001"; -- "0"     
-			 when "0001" => HEX2 <= "1001111"; -- "1" 
-			 when "0010" => HEX2 <= "0010010"; -- "2" 
+			 when "0000" => HEX2 <= "1000000"; -- "0"     
+			 when "0001" => HEX2 <= "1111001"; -- "1" 
+			 when "0010" => HEX2 <= "0100100"; -- "2" 
 			 when "0011" => HEX2 <= "0000110"; -- "3" 
 			 when "0100" => HEX2 <= "1001100"; -- "4" 
 			 when "0101" => HEX2 <= "0100100"; -- "5" 
@@ -88,13 +88,14 @@ begin
 			 when "1011" => HEX2 <= "1100000"; -- b
 			 when "1100" => HEX2 <= "0110001"; -- C
 			 when "1101" => HEX2 <= "1000010"; -- d
-			 when "1110" => HEX2 <= "0110000"; -- E
-			 when "1111" => HEX2 <= "0111000"; -- F
+			 when "1110" => HEX2 <= "0000110"; -- E
+			 when "1111" => HEX2 <= "0001110"; -- F
 		end case;
 	end process;
 
 	-- default outputs
-	LEDG <= "00000001";
+	LEDG(3 downto 0) <= std_logic_vector(count(27 downto 24));
+	LEDG(7 downto 4) <= "1111";
 	LEDR <= (others=>'1');
 	HEX3 <= (others=>'1');
 	HEX1 <= (others=>'1');
